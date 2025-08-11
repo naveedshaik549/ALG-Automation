@@ -1,0 +1,44 @@
+enable_logs: false
+
+# total_connections: total number of connections to be established | if 0, client will establish all connections
+total_connections: 1
+
+# running_duration_sec: after 1st connection timer will start and simulator will stop after configured time interval
+running_duration_sec: 0
+
+# total_packets: client will sent total_packects only per connections and close the connection
+total_packets: 1
+
+message:
+  # message_ratio: mml:ftp:binary | ratios must be in series of 10 | sum of ratios must always be 100
+  message_ratio: "100:0:0"
+  mml:
+    - "f634003e01000002000000000300000000000000000000002f2a3234363937372a2f445350204c4943494e464f3a46554e4354494f4e545950453d654e6f6465423b"
+  ftp:
+    - "f63400b1010000020000000003000000000000000000003300010008454d53434f4d4d000002000f31302e3130322e3138392e313936000005001077e737b00b0421a6b0a2df7e7da50da72f2a313433323535333130392a2f444c44204445464d4541533a535243463d222f6f70742f616c67757365722f222c49503d223139322E3136372E32302E323A32313231222c5553523d22616c6775736572222c5057443d22416c6755736572313233222c47413d303b"
+  binary:
+    - "f634004e0afff800000000000000000000000000000000000000000000000000030000000000000000000101000600000020f0840805a0000003000100010000010101010001000001010201000100000101"
+
+ftp_config: 
+  # ftp_cmd_rate: ftp commands will be send in batches
+  ftp_cmd_rate: 40
+
+tls_config:
+  insecure_skip_verify: false
+  max_version: "TLS12"
+  min_version: "TLS12"
+  tls_server_name: ""
+
+certificate_paths:
+  client_crt_path: "/home/labadmin/Tools/certs/client.crt"
+  client_key_path: "/home/labadmin/Tools/certs/client.key"
+  rootca_crt_path: "/home/labadmin/Tools/certs/signing-chain.crt"
+
+# packets_per_second: packets to send per second to all connections
+packets_per_second: 10
+# connection_parallelism: number of parallel connections to establish
+connection_parallelism: 1600
+
+whitelisted_ips:
+- ip: "172.24.0.2"
+  ports: [6001]

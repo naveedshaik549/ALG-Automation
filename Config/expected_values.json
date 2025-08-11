@@ -1,0 +1,462 @@
+{
+  "precondition_rule": {
+    "mml_rules_list": [
+      {
+        "name": "assert_header_reserved_5",
+        "expr": "header_product_id == 4",
+        "action": "REJECT"
+      },
+      {
+        "name": "01_shake",
+        "expr": "mml_operation == 'SHK'",
+        "option": [
+          {
+            "name": "011_shake_hand",
+            "expr": "mml_operation_object == 'HAND'",
+            "action": "ACCEPT"
+          }
+        ]
+      },
+      {
+        "name": "02_display",
+        "expr": "mml_operation == 'DSP'",
+        "option": [
+          {
+            "name": "021_display_cell_user_info",
+            "expr": "mml_operation_object IN ('USER', 'SSUSERID', 'ONLINEUSER', 'CELLUSERCNTSTATS')",
+            "action": "REJECT"
+          },
+          {
+            "name": "022_display_state_info",
+            "expr": "mml_operation_object IN ('FEATURESTATE', 'GNBTIMEDIFFERENCE', 'HWDETECTSTATUS')",
+            "action": "ACCEPT"
+          }
+        ]
+      },
+      {
+        "name": "03_nix_lst",
+        "expr": "mml_operation == 'LST'",
+        "option": [
+          {
+            "name": "031_nix_lst_mbms",
+            "expr": "mml_operation_object == 'CELLMBMSCFG'",
+            "action": "ACCEPT"
+          },
+          {
+            "name": "032_nix_lst_ald",
+            "expr": "mml_operation_object == 'ALD'",
+            "action": "REJECT"
+          }
+        ]
+      },
+      {
+        "name": "04_log_ftp_upload",
+        "expr": "mml_operation == 'ULD'",
+        "action": "handle_ftp('USR', 'PWD', 'IP', 4)"
+      },
+      {
+        "name": "05_reset",
+        "expr": "mml_operation == 'RST'",
+        "option": [
+          {
+            "name": "051_reset_block",
+            "expr": "mml_operation_object == 'APP'",
+            "action": "ACCEPT"
+          },
+          {
+            "name": "052_reset_block",
+            "expr": "mml_operation_object IN ('BTSNODE', 'BRD', 'BRDPWROFF')",
+            "action": "REJECT"
+          },
+          {
+            "name": "053_reset_new",
+            "expr": "mml_operation_object == 'NEW'",
+            "action": "LOG"
+          }
+        ]
+      },
+      {
+        "name": "06_ftp_download",
+        "expr": "mml_operation == 'DLD'",
+        "option": [
+          {
+            "name": "ftp_007_pm_settings",
+            "expr": "mml_operation_object == 'DEFMEAS'",
+            "action": "handle_ftp('USR', 'PWD', 'IP', 4)"
+          },
+          {
+            "name": "ftp_002_ald",
+            "expr": "mml_operation_object IN ('ALDCFGDATA', 'ALDFILE', 'ALDSW')",
+            "action": "handle_ftp('USR', 'PWD', 'IP', 4)"
+          }
+        ]
+      },
+      {
+        "name": "07_log_leftover",
+        "expr": "true",
+        "action": "LOG"
+      }
+    ],
+    "bin_rules_list": [
+      {
+        "name": "00_log_all",
+        "expr": "true",
+        "action": "LOG"
+      },
+      {
+        "name": "CmdCode check_5",
+        "expr": "CmdCode == 5",
+        "action": "ACCEPT"
+      },
+      {
+        "name": "CmdCode check_257",
+        "expr": "CmdCode == 257",
+        "option": [
+          {
+            "name": "SubCmdCode check_61572",
+            "expr": "SubCmdCode == 61572",
+            "action": "ACCEPT"
+          }
+        ]
+      },
+      {
+        "name": "CmdCode check_3553",
+        "expr": "CmdCode == 3553",
+        "option": [
+          {
+            "name": "SubCmdCode check_68",
+            "expr": "SubCmdCode == 68",
+            "action": "ACCEPT"
+          }
+        ]
+      },
+      {
+        "name": "02_syn_diff_detect",
+        "expr": "CmdCode == '0x69BA'",
+        "action": "ACCEPT"
+      },
+      {
+        "name": "03_batt_power",
+        "expr": "CmdCode IN ('0x0B13', '0x0B15')",
+        "action": "ACCEPT"
+      },
+      {
+        "name": "04_opt_cell_detect",
+        "expr": "CmdCode == '0X699B'",
+        "action": "REJECT"
+      },
+      {
+        "name": "05_trace_task",
+        "expr": "CmdCode == '0x0101'",
+        "option": [
+          {
+            "name": "051_trace_inf",
+            "expr": "TraceType IN ('0x006A', '0x006B', '0x006C', '0x006D', '0x006E')",
+            "action": "ACCEPT"
+          },
+          {
+            "name": "052_trace_usr_info",
+            "expr": "TraceType == '0x007C'",
+            "action": "REJECT"
+          }
+        ]
+      },
+      {
+        "name": "06_test_task",
+        "expr": "CmdCode == '0x0DE1'",
+        "option": [
+          {
+            "name": "061_test_usage_mon",
+            "expr": "TraceType == '0x1B61'",
+            "action": "ACCEPT"
+          },
+          {
+            "name": "062_test_trfc_mon",
+            "expr": "TraceType IN ('0x4E2B', '0x4E21', '0x4E28', '0x4E32', '0x4E33', '0x4E34')",
+            "action": "REJECT"
+          }
+        ]
+      }
+    ],
+    "default_verdict": "ACCEPT",
+    "default_verdict_on_err": "REJECT"
+  },
+  "DTAL-298": {
+    "mml_rules_list": [
+      {
+        "name": "assert_header_reserved_5",
+        "expr": "header_product_id == 4",
+        "action": "REJECT"
+      },
+      {
+        "name": "01_shake",
+        "expr": "mml_operation == 'SHK'",
+        "option": [
+          {
+            "name": "011_shake_hand",
+            "expr": "mml_operation_object == 'HAND'",
+            "action": "ACCEPT"
+          }
+        ]
+      },
+      {
+        "name": "02_display",
+        "expr": "mml_operation == 'DSP'",
+        "option": [
+          {
+            "name": "021_display_cell_user_info",
+            "expr": "mml_operation_object IN ('USER', 'SSUSERID', 'ONLINEUSER', 'CELLUSERCNTSTATS')",
+            "action": "REJECT"
+          },
+          {
+            "name": "022_display_state_info",
+            "expr": "mml_operation_object IN ('FEATURESTATE', 'GNBTIMEDIFFERENCE', 'HWDETECTSTATUS')",
+            "action": "ACCEPT"
+          }
+        ]
+      },
+      {
+        "name": "03_nix_lst",
+        "expr": "mml_operation == 'LST'",
+        "option": [
+          {
+            "name": "031_nix_lst_mbms",
+            "expr": "mml_operation_object == 'CELLMBMSCFG'",
+            "action": "ACCEPT"
+          },
+          {
+            "name": "032_nix_lst_ald",
+            "expr": "mml_operation_object == 'ALD'",
+            "action": "REJECT"
+          }
+        ]
+      },
+      {
+        "name": "04_log_ftp_upload",
+        "expr": "mml_operation == 'ULD'",
+        "action": "handle_ftp('USR', 'PWD', 'IP', 4)"
+      },
+      {
+        "name": "05_reset",
+        "expr": "mml_operation == 'RST'",
+        "option": [
+          {
+            "name": "051_reset_block",
+            "expr": "mml_operation_object == 'APP'",
+            "action": "ACCEPT"
+          },
+          {
+            "name": "052_reset_block",
+            "expr": "mml_operation_object IN ('BTSNODE', 'BRD', 'BRDPWROFF')",
+            "action": "REJECT"
+          },
+          {
+            "name": "053_reset_new",
+            "expr": "mml_operation_object == 'NEW'",
+            "action": "LOG"
+          }
+        ]
+      },
+      {
+        "name": "06_ftp_download",
+        "expr": "mml_operation == 'DLD'",
+        "option": [
+          {
+            "name": "ftp_007_pm_settings",
+            "expr": "mml_operation_object == 'DEFMEAS'",
+            "action": "handle_ftp('USR', 'PWD', 'IP', 4)"
+          },
+          {
+            "name": "ftp_002_ald",
+            "expr": "mml_operation_object IN ('ALDCFGDATA', 'ALDFILE', 'ALDSW')",
+            "action": "handle_ftp('USR', 'PWD', 'IP', 4)"
+          }
+        ]
+      },
+      {
+        "name": "07_log_leftover",
+        "expr": "true",
+        "action": "LOG"
+      }
+    ],
+    "default_verdict": "ACCEPT",
+    "default_verdict_on_err": "REJECT"
+  },
+  "DTAL-299": {
+    "bin_rules_list": [
+      {
+        "name": "00_log_all",
+        "expr": "true",
+        "action": "LOG"
+      },
+      {
+        "name": "CmdCode check_5",
+        "expr": "CmdCode == 5",
+        "action": "ACCEPT"
+      },
+      {
+        "name": "CmdCode check_257",
+        "expr": "CmdCode == 257",
+        "option": [
+          {
+            "name": "SubCmdCode check_61572",
+            "expr": "SubCmdCode == 61572",
+            "action": "ACCEPT"
+          }
+        ]
+      },
+      {
+        "name": "CmdCode check_3553",
+        "expr": "CmdCode == 3553",
+        "option": [
+          {
+            "name": "SubCmdCode check_68",
+            "expr": "SubCmdCode == 68",
+            "action": "ACCEPT"
+          }
+        ]
+      },
+      {
+        "name": "02_syn_diff_detect",
+        "expr": "CmdCode == '0x69BA'",
+        "action": "ACCEPT"
+      },
+      {
+        "name": "03_batt_power",
+        "expr": "CmdCode IN ('0x0B13', '0x0B15')",
+        "action": "ACCEPT"
+      },
+      {
+        "name": "04_opt_cell_detect",
+        "expr": "CmdCode == '0X699B'",
+        "action": "REJECT"
+      },
+      {
+        "name": "05_trace_task",
+        "expr": "CmdCode == '0x0101'",
+        "option": [
+          {
+            "name": "051_trace_inf",
+            "expr": "TraceType IN ('0x006A', '0x006B', '0x006C', '0x006D', '0x006E')",
+            "action": "ACCEPT"
+          },
+          {
+            "name": "052_trace_usr_info",
+            "expr": "TraceType == '0x007C'",
+            "action": "REJECT"
+          }
+        ]
+      },
+      {
+        "name": "06_test_task",
+        "expr": "CmdCode == '0x0DE1'",
+        "option": [
+          {
+            "name": "061_test_usage_mon",
+            "expr": "TraceType == '0x1B61'",
+            "action": "ACCEPT"
+          },
+          {
+            "name": "062_test_trfc_mon",
+            "expr": "TraceType IN ('0x4E2B', '0x4E21', '0x4E28', '0x4E32', '0x4E33', '0x4E34')",
+            "action": "REJECT"
+          }
+        ]
+      }
+    ],
+    "default_verdict": "ACCEPT",
+    "default_verdict_on_err": "REJECT"
+  },
+  "DTAL-291": {
+    "metrics_to_validate": [
+      {
+        "field": "alg_mml_tcp_accept_upstream_success",
+        "expected_diff": 1
+      },
+      {
+        "field": "alg_mml_tcp_dial_downstream_success",
+        "expected_diff": 1
+      },
+      {
+        "field": "alg_mml_tls_handshake_downstream_success",
+        "expected_diff": 1
+      },
+      {
+        "field": "alg_mml_tls_handshake_upstream_success",
+        "expected_diff": 1
+      },
+      {
+        "field": "alg_mml_messages_forwarded{direction=\"downstream\"}",
+        "expected_diff": 1
+      },
+      {
+        "field": "alg_mml_tls_handshake_downstream_fail",
+        "expected_diff": 0
+      },
+      {
+        "field": "alg_mml_tls_handshake_upstream_fail",
+        "expected_diff": 0
+      }
+    ]
+  },
+  "DTAL-292": {
+    "metrics_to_validate": [
+      {
+        "field": "alg_mml_tls_handshake_downstream_success",
+        "expected_diff": 1
+      },
+      {
+        "field": "alg_mml_tls_handshake_upstream_success",
+        "expected_diff": 1
+      }
+    ]
+  },
+  "DTAL-302": {
+    "metrics_to_validate": [
+      {
+        "field": "alg_mml_tls_handshake_downstream_success",
+        "expected_diff": 1
+      },
+      {
+        "field": "alg_mml_tls_handshake_upstream_success",
+        "expected_diff": 1
+      }
+    ]
+  },
+  "DTAL-303": {
+    "metrics_to_validate": [
+      {
+        "field": "alg_mml_tls_handshake_downstream_success",
+        "expected_diff": 1
+      },
+      {
+        "field": "alg_mml_tls_handshake_upstream_success",
+        "expected_diff": 1
+      }
+    ]
+  },
+  "DTAL-310": {
+    "metrics_to_validate": [
+      {
+        "field": "alg_mml_tls_handshake_downstream_success",
+        "expected_diff": 1
+      },
+      {
+        "field": "alg_mml_tls_handshake_upstream_success",
+        "expected_diff": 1
+      }
+    ]
+  },
+  "DTAL-314": {
+    "metrics_to_validate": [
+      {
+        "field": "alg_mml_tls_handshake_downstream_success",
+        "expected_diff": 1
+      },
+      {
+        "field": "alg_mml_tls_handshake_upstream_success",
+        "expected_diff": 1
+      }
+    ]
+  }
+}

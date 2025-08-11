@@ -1,0 +1,32 @@
+enable_logs: true
+
+# running_duration_sec: after 1st request received timer will start and simulator will stop after configured time interval
+running_duration_sec: 0
+
+# upstream_response: commands to send back to ALG as response
+upstream_response:
+  - "f63400550ae54502000000000300000000000000000000008306e54500000000000a420a01004203350042035b004201940042010a0032020700750001007400fe008000010080000500"
+  - "f63400a701000100000000000000000000000000000000000000000000000000030000000000000000002b2b2b202020204254535f53494d554c41544f522020202020202020323032342d30392d32342031323a31313a32350d0a4f264d2020202023360d0a25252f2a502a2f44554d4d593a3b25250d0a524554434f4445203d203020204f7065726174696f6e207375636365656465642e0d0a0d0a0d0a2d2d2d20202020454e440d0a"
+
+ftp_config:
+  # ftp_action_enabled: if disable ftp action will not take place : Use for Load testing
+  ftp_action_enabled: false
+  dissable_epsv_mode: false
+  # upload_from_path: update this param to pick the file to upload to FTP server
+  upload_from_path: "/home/..."
+
+tls_config:
+  insecure_skip_verify: false
+  max_version: "TLS12"
+  min_version: "TLS12"
+  tls_server_name: ""
+  
+certificate_paths:
+  server_crt_path: "/home/labadmin/Tools/certs/server.crt"
+  server_key_path: "/home/labadmin/Tools/certs/server.key"
+  rootca_crt_path: "/home/labadmin/Tools/certs/signing-chain.crt"
+
+
+whitelisted_ips:
+- ip: "172.24.0.2"
+  ports: [6001]
