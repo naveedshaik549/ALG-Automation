@@ -1,30 +1,30 @@
-import yaml
-from collections import OrderedDict
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
 import os
 import time
 import csv
 import json
 import ssl
-import shutil
+import ast
 import re
 import textwrap
 import logging
 import paramiko
-import tempfile
+import math
 import http.client
 from datetime import datetime
 from tabulate import tabulate
 import configparser
+from .html_report_generator import create_html_handler
+from .Server import Server
+from .html_report_generator import start_testcase, end_testcase
+
 config = configparser.ConfigParser()
 config_dir = os.path.join(os.path.dirname(__file__), "..", "Config")
 config_path = os.path.join(config_dir, 'config.ini')
 config.read(os.path.abspath(config_path))
-api_json_path = os.path.join(config_dir, "api.json")
-expected_values_path = os.path.join(config_dir, "expected_values.json")
-from .html_report_generator import create_html_handler
-from .Server import Server
-from .html_report_generator import start_testcase, end_testcase, log_to_step
-
+api_json_path = os.path.join(config_dir, config['AUTOMATION_VARS']['API_FILE'])
+expected_values_path = os.path.join(config_dir, config['AUTOMATION_VARS']['EXPECTED_API_FILE'])
 
 # This function creates a directory for reports
 def create_run_folder(base_dir="reports"):
@@ -125,7 +125,7 @@ def ssh_connect(ip_address, username, password, port=22):
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(hostname=ip_address, port=port, username=username, password=password)
+        client.connect(hostname=ip_address, port=port, username=username, password=password, allow_agent=False, look_for_keys=False)
         logger.debug(f"SSH connection successful - {ip_address} - with username - {username}")
         return client
     except Exception as e:
@@ -134,8 +134,9 @@ def ssh_connect(ip_address, username, password, port=22):
     
 
 # This function starts the NE server in a background thread using SSH    
-def start_NE(testcase_id, report_dir, config_file):
-    log_file = os.path.join(report_dir, testcase_id, "NE_server.log")
+def start_NE(testcase_id, report_dir, config_file, log_file=None):
+    if log_file is None:
+        log_file = os.path.join(report_dir, testcase_id, "NE_server.log")
     
     ne_server = Server(
         server_name="NE",
@@ -155,8 +156,9 @@ def start_NE(testcase_id, report_dir, config_file):
 
 
 # This function starts the NEM server in a background thread using SSH
-def start_NEM(testcase_id, report_dir, config_file):
-    log_file = os.path.join(report_dir, testcase_id, "NEM_server.log")
+def start_NEM(testcase_id, report_dir, config_file, log_file=None):
+    if log_file is None:
+        log_file = os.path.join(report_dir, testcase_id, "NEM_server.log")
     
     nem_server = Server(
         server_name="NEM",
@@ -202,13 +204,15 @@ def run_api(host, port, api_path, headers, client_crt, client_key, client_ca, da
 
 
 # This function triggers an API call based on the provided API key and JSON configuration file
-def trigger_api(api_key):
+def trigger_api(api_key, api_file=config['AUTOMATION_VARS']['API_FILE'], host=config['ALG']['DOMAIN_NAME'], port=config['ALG']['PORT']):
+    
+    api_json_path = os.path.join(config_dir, api_file)
     try:
         with open(api_json_path, "r") as f:
             api_config = json.load(f)
 
         if api_key not in api_config:
-            raise KeyError(f"API key '{api_key}' not found in {json_file_path}")
+            raise KeyError(f"API key '{api_key}' not found in {api_file}")
 
         api_details = api_config[api_key]
         method = api_details.get("method", "POST")
@@ -216,7 +220,7 @@ def trigger_api(api_key):
         data = api_details.get("data", None)
         headers = api_details.get("headers", {"Content-Type": "application/json"})
         logger.info(f"Running Rest API - {api_path} - {method} from REST Client to ALG Server")
-        result = run_api(config['ALG']['DOMIN_NAME'], config['ALG']['PORT'], api_path, headers,
+        result = run_api(host, port, api_path, headers,
                          config['TLS_CERTS']['CERT'], config['TLS_CERTS']['KEY'], config['TLS_CERTS']['CA'], data, method)
         if not result:
             logger.error("No response returned from ALG server")
@@ -376,12 +380,16 @@ class TestRunner:
             writer.writerow([])
             writer.writerow(["Total Tests", total, f"Pass: {passed}", f"Fail: {failed}", f"Total Time: {total_time:.2f}s"])
         logger.info(f"Total: {total} | Passed: {passed} | Failed: {failed} | Duration: {total_time:.2f}s")
-        print(f"\n\t--------------------------------------------------------")
-        print(f"\t|                 Final Result                          |")
-        print(f"\t|-------------------------------------------------------|")
-        print(f"\t| Total: {total} | Passed: {passed} | Failed: {failed} | Duration: {total_time:.2f}s   |")
-        print(f"\t|                                                       |")
-        print(f"\t--------------------------------------------------------")
+        print("\n" + "-" * 80)
+        print("|{:^78}|".format("Final Result"))
+        print("-" * 80)
+        print("| {:<12} | {:<12} | {:<12} | {:<31} |".format(f"Total: {total}", f"Passed: {passed}", f"Failed: {failed}", f"Duration: {total_time:.2f}s"))
+        print("-" * 80)
+        print("| {:<18} | {:<55} |".format(f"Report", f"{self.report_dir}/Reports.csv"))
+        print("| {:<18} | {:<55} |".format(f"Automation (JSON)", f"{self.report_dir}/Automation.json"))
+        print("| {:<18} | {:<55} |".format(f"Automation (Log)", f"{self.report_dir}/Automation.log"))
+        print("| {:<18} | {:<55} |".format(f"Automation (HTML)", f"{self.report_dir}/Automation.html"))
+        print("-" * 80)
 
 
         # Update global summary for HTML log
@@ -423,21 +431,26 @@ def search_string_in_file(file_path, search_string, num_occurrences = None):
 
 
 # This function retrieves filter rules from the ALG server and validates them against expected values
-def get_filter_rules_and_validate(api_key, expected_values_key):
+def get_filter_rules_and_validate(
+        api_key, 
+        expected_values_key, 
+        api_file=config['AUTOMATION_VARS']['API_FILE'], 
+        host=config['ALG']['DOMAIN_NAME'], 
+        port=config['ALG']['PORT']
+    ):
     # Load expected values from JSON file
     with open(expected_values_path, "r") as f:
         expected_values = json.load(f)
         
-    status_code, body = trigger_api(api_key)
+    status_code, body = trigger_api(api_key, api_file, host, port)
     expected = expected_values[expected_values_key]
     
     if body is None:
         logger.error("[Failure] No response received")
         raise AssertionError("No response received from ALG Server")
     assert validate_result(expected, body), "Test failed: Result does not match expected output"
-        
-        
-        
+
+
 # This function SSH into a server, executes a command, and returns the console output as a string.
 def run_remote_command(ip_address, username, password, command, port=22):
     """
@@ -493,14 +506,9 @@ def is_ALG_active():
 
 
 # This function retrieves the ALG logs from the ALG server using journalctl
-def get_ALG_logs(testcase_id, seconds = 10):
-    """
-    SSH into ALG server, run 'journalctl -u alggo --since "<X> ago"', and return the logs as a string.
-    :param seconds: Number of seconds in the past to fetch logs from (e.g., 60 for 1 minute ago)
-    :return: String containing the logs
-    """
+def get_ALG_logs(testcase_id, seconds = 10, file_name="ALG.log"):
     try:
-        # Convert seconds to a human-readable string for journalctl
+        seconds = math.ceil(seconds) # Adding 2 seconds buffer
         if seconds < 60:
             since_str = f"{seconds} second ago" if seconds == 1 else f"{seconds} seconds ago"
         elif seconds < 3600:
@@ -519,7 +527,7 @@ def get_ALG_logs(testcase_id, seconds = 10):
             cmd
         )
         # Use the global _report_dir for the current automation run
-        log_file_path = os.path.join(_report_dir, testcase_id, "ALG.log")
+        log_file_path = os.path.join(_report_dir, testcase_id, file_name)
         with open(log_file_path, "w", encoding="utf-8") as f:
             f.write(output)
         logger.info(f"ALG logs retrived successfully to - {log_file_path}")
@@ -573,148 +581,114 @@ def compare_metrics_diff(initial_metrics, final_metrics, testcase_id):
         return 'FAIL'
 
 
-# This function modifies a remote JSON configuration file on the ALG server
-def modify_alg_config_file(remote_path, key, value):
-    ip_address = config['ALG']['IP_ADDRESS']
-    username = config['ALG']['USERNAME']
-    password = config['ALG']['PASSWORD']
-    try:
-        transport = paramiko.Transport((ip_address, 22))
-        transport.connect(username=username, password=password)
-        sftp = paramiko.SFTPClient.from_transport(transport)
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            sftp.get(remote_path, tmp.name)
-            tmp_path = tmp.name
-
-        # Modify JSON
-        with open(tmp_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        # Support dot notation for nested keys
-        keys = key.split('.')
-        d = data
-        for k in keys[:-1]:
-            if k not in d:
-                raise KeyError(f"Key '{k}' not found in config")
-            d = d[k]
-        d[keys[-1]] = value
-
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-
-        # Upload file back
-        sftp.put(tmp_path, remote_path)
-        sftp.close()
-        transport.close()
-        logger.info(f"Updated {key} in {remote_path} on {ip_address}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to modify remote JSON: {e}", exc_info=True)
-        return False
-
-
-class QuotedString(str):
-    pass
-
-def quoted_str_presenter(dumper, data):
-    return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='"')
-
-yaml.add_representer(QuotedString, quoted_str_presenter)
-
-yaml.add_constructor(
-    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-    lambda loader, node: OrderedDict(loader.construct_pairs(node))
-)
-yaml.add_representer(
-    OrderedDict,
-    lambda dumper, data: dumper.represent_mapping(
-        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, data.items()
-    )
-)
-
-def generate_sim_config_file(source_path, dest_path, updates={}):
-    with open(source_path, "r") as f:
-        data = yaml.safe_load(f) or OrderedDict()
-
-    def format_value(val):
-        if isinstance(val, bool) or isinstance(val, int):
-            return val
-        if isinstance(val, list):
-            return [format_value(v) for v in val]
-        if isinstance(val, dict):
-            return {k: format_value(v) for k, v in val.items()}
-        return QuotedString(str(val))
-
-    def set_nested_value(container, keys, value):
-        key = keys[0]
-        list_match = re.match(r"^([^\[]+)\[(\d+)\]$", key)
-        if list_match:
-            list_name, idx = list_match.groups()
-            idx = int(idx)
-            if list_name not in container or not isinstance(container[list_name], list):
-                container[list_name] = []
-            while len(container[list_name]) <= idx:
-                container[list_name].append(OrderedDict())
-            if len(keys) == 1:
-                container[list_name][idx] = format_value(value)
-            else:
-                set_nested_value(container[list_name][idx], keys[1:], value)
-        else:
-            if len(keys) == 1:
-                container[key] = format_value(value)
-            else:
-                if key not in container or not isinstance(container[key], (dict, OrderedDict)):
-                    container[key] = OrderedDict()
-                set_nested_value(container[key], keys[1:], value)
-
-    for key, value in updates.items():
-        set_nested_value(data, key.split("."), value)
-
-    with open(dest_path, "w") as f:
-        yaml.dump(
-            data,
-            f,
-            default_flow_style=False,
-            sort_keys=False,
-            allow_unicode=True
-        )
-
-        
 def generate_config_files():
+    simulator_ports = ast.literal_eval(config['NE']['PORTS'])
     ne_ipv4_config_params = {
         "certificate_paths.server_crt_path": f"{config['NE']['CERT']}",
         "certificate_paths.server_key_path": f"{config['NE']['KEY']}",
         "certificate_paths.rootca_crt_path": f"{config['NE']['CA']}",
-        "whitelisted_ips[0].ip": f"{config['NE']['IPv4_ADDRESS']}"
+        "ftp_config.upload_from_path": f"{config['NE']['FTP_UPLOAD_FILE']}",
+        "whitelisted_ips[0].ip": f"{config['NE']['IPv4_ADDRESS']}",
+        "whitelisted_ips[0].ports": simulator_ports
     }
     nem_ipv4_config_params = {
         "certificate_paths.client_crt_path": f"{config['NEM']['CERT']}",
         "certificate_paths.client_key_path": f"{config['NEM']['KEY']}",
         "certificate_paths.rootca_crt_path": f"{config['NEM']['CA']}",
+        "tls_config.tls_server_name": f"{config['ALG']['DOMAIN_NAME']}",
         "whitelisted_ips[0].ip": f"{config['NE']['IPv4_ADDRESS']}",
-        "tls_config.tls_server_name": f"{config['ALG']['DOMIN_NAME']}"
+        "whitelisted_ips[0].ports": simulator_ports
     }
     ne_ipv6_config_params = {
+        "ftp_config.upload_from_path": f"{config['NE']['FTP_UPLOAD_FILE']}",
         "certificate_paths.server_crt_path": f"{config['NE']['CERT']}",
         "certificate_paths.server_key_path": f"{config['NE']['KEY']}",
         "certificate_paths.rootca_crt_path": f"{config['NE']['CA']}",
-        "whitelisted_ips[0].ip": f"{config['NE']['IPv6_ADDRESS']}"
+        "whitelisted_ips[0].ip": f"{config['NE']['IPv6_ADDRESS']}",
+        "whitelisted_ips[0].ports": simulator_ports
     }
     nem_ipv6_config_params = {
         "certificate_paths.client_crt_path": f"{config['NEM']['CERT']}",
         "certificate_paths.client_key_path": f"{config['NEM']['KEY']}",
         "certificate_paths.rootca_crt_path": f"{config['NEM']['CA']}",
+        "tls_config.tls_server_name": f"{config['ALG']['DOMAIN_NAME']}",
         "whitelisted_ips[0].ip": f"{config['NE']['IPv6_ADDRESS']}",
-        "tls_config.tls_server_name": f"{config['ALG']['DOMIN_NAME']}"
+        "whitelisted_ips[0].ports": simulator_ports
     }
     
     output_dir = "generated_configs"
-    
     os.makedirs(output_dir, exist_ok=True)
-    
-    generate_sim_config_file("Config/NE_config.yaml", f"{output_dir}/NE_ipv4_config.yaml", ne_ipv4_config_params)
-    generate_sim_config_file("Config/NEM_config.yaml", f"{output_dir}/NEM_ipv4_config.yaml", nem_ipv4_config_params)
-    generate_sim_config_file("Config/NE_config.yaml", f"{output_dir}/NE_ipv6_config.yaml", nem_ipv6_config_params)
-    generate_sim_config_file("Config/NEM_config.yaml", f"{output_dir}/NEM_ipv6_config.yaml", nem_ipv6_config_params)
+    update_config_file('Config/NE_config.yaml', f"{output_dir}/NE_ipv4_config.yaml", ne_ipv4_config_params)
+    update_config_file('Config/NEM_config.yaml', f"{output_dir}/NEM_ipv4_config.yaml", nem_ipv4_config_params)
+    update_config_file('Config/NE_config.yaml', f"{output_dir}/NE_ipv6_config.yaml", ne_ipv6_config_params)
+    update_config_file('Config/NEM_config.yaml', f"{output_dir}/NEM_ipv6_config.yaml", nem_ipv6_config_params)
  
     
+def update_config_file(file_path: str, output_file: str = None, updates: dict ={}):
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    ext = os.path.splitext(file_path)[1].lower()
+    yaml = YAML()
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    yaml.preserve_quotes = True
+
+    # Load file
+    if ext in (".yaml", ".yml"):
+        with open(file_path, "r") as f:
+            data = yaml.load(f)
+    elif ext == ".json":
+        with open(file_path, "r") as f:
+            data = json.load(f)
+    else:
+        raise ValueError("Unsupported file type. Use .yaml, .yml, or .json")
+
+    def parse_path(path):
+        parts = []
+        for segment in path.split('.'):
+            tokens = re.findall(r'([^\[\]]+)|\[(\d+)\]', segment)
+            for key, idx in tokens:
+                if key:
+                    parts.append(key)
+                elif idx:
+                    parts.append(int(idx))
+        return parts
+
+    for path_str, value in updates.items():
+        keys = parse_path(path_str)
+        d = data
+        for i, key in enumerate(keys[:-1]):
+            next_key = keys[i + 1]
+            if isinstance(key, int):
+                while len(d) <= key:
+                    d.append(CommentedMap() if isinstance(next_key, str) else CommentedSeq())
+                d = d[key]
+            else:
+                if key not in d or not isinstance(d[key], (dict, list, CommentedMap, CommentedSeq)):
+                    d[key] = CommentedSeq() if isinstance(next_key, int) else CommentedMap()
+                d = d[key]
+
+        last_key = keys[-1]
+        if isinstance(value, list):
+            seq = CommentedSeq(value)
+            seq.fa.set_flow_style()  # force [ ] style
+            value = seq
+
+        if isinstance(last_key, int):
+            while len(d) <= last_key:
+                d.append(None)
+            d[last_key] = value
+
+        else:
+            d[last_key] = value
+
+    # Decide output path
+    save_path = output_file if output_file else file_path
+
+    # Save back in correct format
+    if ext in (".yaml", ".yml"):
+        with open(save_path, "w") as f:
+            yaml.dump(data, f)
+    elif ext == ".json":
+        with open(save_path, "w") as f:
+            json.dump(data, f, indent=2)

@@ -1,6 +1,5 @@
 import os
 import re
-import json
 import logging
 from contextlib import contextmanager
 from datetime import datetime

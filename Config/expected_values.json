@@ -458,5 +458,100 @@
         "expected_diff": 1
       }
     ]
+  },
+  "DTAL_4_2_5_IPv4": {
+    "mml_rules_list": [
+      {
+        "name": "assert_header_reserved_5",
+        "expr": "header_product_id == 4",
+        "action": "REJECT"
+      }
+    ],
+    "bin_rules_list": [],
+    "default_verdict": "ACCEPT",
+    "default_verdict_on_err": "REJECT"
+  },
+  "DTAL_4_2_5_IPv6": {
+    "mml_rules_list": [
+      {
+        "name": "01_shake",
+        "expr": "mml_operation == 'SHK'",
+        "option": [
+          {
+            "name": "011_shake_hand",
+            "expr": "mml_operation_object == 'HAND'",
+            "action": "ACCEPT"
+          }
+        ]
+      }
+    ],
+    "default_verdict": "ACCEPT",
+    "default_verdict_on_err": "REJECT"
+  },
+  "DTAL_4_2_6_IPv4": {
+    "mml_rules_list": [],
+    "bin_rules_list": [
+      {
+        "name": "00_log_all",
+        "expr": "true",
+        "action": "LOG"
+      }
+    ],
+    "default_verdict": "ACCEPT",
+    "default_verdict_on_err": "REJECT"
+  },
+  "DTAL_4_2_6_IPv6": {
+    "mml_rules_list": [],
+    "bin_rules_list": [
+      {
+        "name": "CmdCode check_5",
+        "expr": "CmdCode == 5",
+        "action": "ACCEPT"
+      }
+    ],
+    "default_verdict": "ACCEPT",
+    "default_verdict_on_err": "REJECT"
+  },
+  "DTAL_4_2_7_IPv4": {
+    "mml_rules_list": [
+      {
+        "name": "assert_header_reserved_5",
+        "expr": "header_product_id == 4",
+        "action": "REJECT"
+      }
+    ],
+    "bin_rules_list": [
+      {
+        "name": "00_log_all",
+        "expr": "true",
+        "action": "LOG"
+      }
+    ],
+    "default_verdict": "ACCEPT",
+    "default_verdict_on_err": "REJECT"
+  },
+  "DTAL_4_2_7_IPv6": {
+    "mml_rules_list": [
+      {
+        "name": "01_shake",
+        "expr": "mml_operation == 'SHK'",
+        "option": [
+          {
+            "name": "011_shake_hand",
+            "expr": "mml_operation_object == 'HAND'",
+            "action": "ACCEPT"
+          }
+        ]
+      }
+    ],
+    "bin_rules_list": [
+      {
+        "name": "CmdCode check_5",
+        "expr": "CmdCode == 5",
+        "action": "ACCEPT"
+      }
+    ],
+    "default_verdict": "ACCEPT",
+    "default_verdict_on_err": "REJECT"
   }
 }
