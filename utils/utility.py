@@ -1,5 +1,6 @@
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 import os
 import time
 import csv
@@ -7,6 +8,7 @@ import json
 import ssl
 import ast
 import re
+import binascii
 import textwrap
 import logging
 import paramiko
@@ -451,28 +453,30 @@ def get_filter_rules_and_validate(
     assert validate_result(expected, body), "Test failed: Result does not match expected output"
 
 
-# This function SSH into a server, executes a command, and returns the console output as a string.
-def run_remote_command(ip_address, username, password, command, port=22):
-    """
-    Connects to a remote server via SSH, executes the given command (with PTY), and returns the console output.
-    """
-    import paramiko
-    output = ""
+# This function runs a remote command via SSH and returns the output
+def run_remote_command(ip_address, username, password, command, waitTime=0, port=22):
     try:
         ssh_client = ssh_connect(ip_address, username, password, port)
         transport = ssh_client.get_transport()
         channel = transport.open_session()
         channel.get_pty()
+        
         # If command uses sudo, pipe password to sudo
         if command.strip().startswith('sudo '):
             command = f"echo {password} | sudo -S {command[5:]}"
+        
         channel.exec_command(command)
+        
+        if waitTime > 0:
+            time.sleep(waitTime)
+        
         stdout = channel.makefile('r')
         stderr = channel.makefile_stderr('r')
         output = stdout.read().decode('utf-8', errors='replace')
         error = stderr.read().decode('utf-8', errors='replace')
         if error:
             logger.warning(f"Remote command error: {error}")
+        
         channel.close()
         ssh_client.close()
     except Exception as e:
@@ -508,7 +512,7 @@ def is_ALG_active():
 # This function retrieves the ALG logs from the ALG server using journalctl
 def get_ALG_logs(testcase_id, seconds = 10, file_name="ALG.log"):
     try:
-        seconds = math.ceil(seconds) # Adding 2 seconds buffer
+        seconds = math.ceil(seconds)
         if seconds < 60:
             since_str = f"{seconds} second ago" if seconds == 1 else f"{seconds} seconds ago"
         elif seconds < 3600:
@@ -669,16 +673,20 @@ def update_config_file(file_path: str, output_file: str = None, updates: dict ={
                 d = d[key]
 
         last_key = keys[-1]
-        if isinstance(value, list):
+        # If the value is a string, force quotes
+        if isinstance(value, str):
+            value = DoubleQuotedScalarString(value)
+
+        # Only wrap in sequence if it's an actual list
+        elif isinstance(value, list):
             seq = CommentedSeq(value)
-            seq.fa.set_flow_style()  # force [ ] style
+            seq.fa.set_flow_style()
             value = seq
 
         if isinstance(last_key, int):
             while len(d) <= last_key:
                 d.append(None)
             d[last_key] = value
-
         else:
             d[last_key] = value
 
@@ -692,3 +700,55 @@ def update_config_file(file_path: str, output_file: str = None, updates: dict ={
     elif ext == ".json":
         with open(save_path, "w") as f:
             json.dump(data, f, indent=2)
+
+
+# This function generates an MML command in hexadecimal format from a JSON structure
+def generate_mml_command(cmd_json: dict) -> str:
+    # ---------------------------
+    # Step 1: Build Message Body
+    # ---------------------------
+    comment = cmd_json.get("comment", "").strip()
+    operation = cmd_json.get("operation", "").strip()
+    operation_object = cmd_json.get("operation_object", "").strip()
+    parameters = cmd_json.get("parameters", {})
+
+    # Format comment, operation, and parameters
+    comment_part = f"/*{comment}*/" if comment else ""
+    op_obj_part = f"{operation} {operation_object}" if operation_object else operation
+    params_part = ",".join(f"{k}={v}" for k, v in parameters.items()) if parameters else ""
+
+    # Final body string
+    body_str = f"{comment_part}{op_obj_part}:{params_part};" if params_part else f"{comment_part}{op_obj_part}:;"
+    body_bytes = body_str.encode("ascii")
+    body_hex = body_bytes.hex()
+    body_len = len(body_bytes)  # size in bytes
+
+    # ---------------------------
+    # Step 2: Calculate Data Size
+    # ---------------------------
+    data_size = (body_len*2 + 40) // 2   # integer division
+    data_size_hex = f"{data_size:04x}"  # 2-byte big-endian
+
+    # ---------------------------
+    # Step 3: Build Header
+    # ---------------------------
+    header_hex = (
+        "f634"           # Start Tag
+        + data_size_hex  # Data Size (big-endian)
+        + "01"           # Service Tag (MML)
+        + "0000"         # Session Handle
+        + "02"           # Version V2
+        + "00000000"     # UIID
+        + "03"           # Frame Tag (Single Frame)
+        + "00"           # Product ID
+        + "0000"         # Reserved1
+        + "0000"         # Frame No
+        + "00000000"     # Reserved2
+        + "0000"         # Extended Length
+    )
+
+    # ---------------------------
+    # Step 4: Final Hex Message
+    # ---------------------------
+    final_hex = header_hex + body_hex
+    return final_hex

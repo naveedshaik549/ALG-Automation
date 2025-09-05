@@ -22,7 +22,7 @@ ftp_config:
   enable_list_command: false
   disable_epsv_mode: true
   # upload_from_path: update this param to pick the file to upload to FTP server
-  upload_from_path: "/home/..."
+  upload_from_path: "/home/"
 
 tls_config:
   insecure_skip_verify: false

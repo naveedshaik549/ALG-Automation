@@ -30,6 +30,11 @@
                         "name": "022_display_state_info",
                         "expr": "mml_operation_object IN ('FEATURESTATE', 'GNBTIMEDIFFERENCE', 'HWDETECTSTATUS')",
                         "action": "ACCEPT"
+                    },
+                    {
+                        "name": "023_display_block",
+                        "expr": "mml_operation_object == 'INFOLIC'",
+                        "action": "LOG"
                     }
                 ]
             },
