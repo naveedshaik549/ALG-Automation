@@ -1,6 +1,3 @@
-from ruamel.yaml import YAML
-from ruamel.yaml.comments import CommentedMap, CommentedSeq
-from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 import os
 import time
 import csv
@@ -8,13 +5,15 @@ import json
 import ssl
 import ast
 import re
-import binascii
 import textwrap
 import logging
 import paramiko
-import math
+import tempfile
 import http.client
 from datetime import datetime
+from ruamel.yaml import YAML
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from tabulate import tabulate
 import configparser
 from .html_report_generator import create_html_handler
@@ -346,16 +345,17 @@ class TestRunner:
         try:
             logger.info(f" ----- **************************************-------")
             logger.info(f" ----- Starting Test execution - [{test_id}] -------")
-            testcase_dir = create_testcase_folder(self.report_dir, test_id)
+            create_testcase_folder(self.report_dir, test_id)
             logger.info(f"ALG Status: {is_ALG_active()}")
             start = time.time()
+            alg_logs_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             start_testcase(test_id, test_description)
             logger.info(f"[{test_id}] - {test_description}")
             test_method()
             result = "PASS"
             end = time.time()
-            timeTaken = end - start
-            get_ALG_logs(test_id, timeTaken)
+            alg_logs_end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            get_ALG_logs(test_id, alg_logs_start_time, alg_logs_end_time)
             logger.info(f"ALG Status: {is_ALG_active()}")
         except AssertionError as ae:
             logger.error(f"[Assertion Failure]: {ae}")
@@ -402,33 +402,33 @@ class TestRunner:
         _automation_summary['total_time'] = total_time
         
 
-# This function searches for a string in a file and counts occurrences   
-def search_string_in_file(file_path, search_string, num_occurrences = None):
-    """
-    Searches for all occurrences of search_string in the file at file_path.
-    If num_occurrences is provided (not None), checks if the count matches.
-    If num_occurrences is None, just checks if the string is present at least once.
-    Returns PASS/FAIL based on the result.
-    """
+# This function searches for a string in a file and counts occurrences
+def search_string_in_file(file_path, search_string, num_occurrences=None, use_regex=False):
     count_occurrences = 0
-    with open(file_path, 'r', encoding='utf-8') as file:
-        for idx, line in enumerate(file, 1):
-            if search_string in line:
-                count_occurrences += 1
-    logger.debug(f"{search_string} - is available {count_occurrences} times in - {file_path}")
+    with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
+        for _, line in enumerate(file, 1):
+            if use_regex:
+                if re.search(search_string, line):
+                    count_occurrences += 1
+            else:
+                if search_string in line:
+                    count_occurrences += 1
+
+    logger.debug(f"{search_string} - found {count_occurrences} times in - {file_path}")
+
     if num_occurrences is not None:
         if count_occurrences == num_occurrences:
-            logger.info(f"Success - [{search_string}] - {count_occurrences} times in - {file_path} (expected {num_occurrences})")
+            logger.info(f"Success - [{search_string}] - {count_occurrences} times in {file_path} (expected {num_occurrences})")
             return 'PASS'
         else:
-            logger.warning(f"Failed - [{search_string}] - {count_occurrences} times in - {file_path} - expected {num_occurrences}")
+            logger.warning(f"Failed - [{search_string}] - {count_occurrences} times in {file_path} (expected {num_occurrences})")
             return 'FAIL'
     else:
-        if (count_occurrences > 0 and num_occurrences == None):
+        if count_occurrences > 0:
             logger.info(f"Success - [{search_string}] available in {file_path}")
             return 'PASS'
         else:
-            logger.error(f"Failed - {search_string} not available in {file_path}")
+            logger.info(f"Failed - [{search_string}] not available in {file_path}")
             return 'FAIL'
 
 
@@ -510,20 +510,15 @@ def is_ALG_active():
 
 
 # This function retrieves the ALG logs from the ALG server using journalctl
-def get_ALG_logs(testcase_id, seconds = 10, file_name="ALG.log"):
+def get_ALG_logs(testcase_id, since, until=None, file_name="ALG.log"):
     try:
-        seconds = math.ceil(seconds)
-        if seconds < 60:
-            since_str = f"{seconds} second ago" if seconds == 1 else f"{seconds} seconds ago"
-        elif seconds < 3600:
-            mins = seconds // 60
-            since_str = f"{mins} minute ago" if mins == 1 else f"{mins} minutes ago"
-        else:
-            hours = seconds // 3600
-            since_str = f"{hours} hour ago" if hours == 1 else f"{hours} hours ago"
         logger.info("Retriving ALG logs for the test case")
-        cmd = f'journalctl --no-pager -u alggo --since "{since_str}"'
-        logger.debug(f"Running command: {cmd}")
+        if until == None:
+            cmd = f'journalctl --no-pager -u alggo --since "{since}"'
+        else:
+            cmd = f'journalctl --no-pager -u alggo --since "{since}" --until "{until}"'
+            
+        logger.info(f"Running command: {cmd}")
         output = run_remote_command(
             config['ALG']['IP_ADDRESS'],
             config['ALG']['USERNAME'],
@@ -704,9 +699,6 @@ def update_config_file(file_path: str, output_file: str = None, updates: dict ={
 
 # This function generates an MML command in hexadecimal format from a JSON structure
 def generate_mml_command(cmd_json: dict) -> str:
-    # ---------------------------
-    # Step 1: Build Message Body
-    # ---------------------------
     comment = cmd_json.get("comment", "").strip()
     operation = cmd_json.get("operation", "").strip()
     operation_object = cmd_json.get("operation_object", "").strip()
@@ -723,15 +715,9 @@ def generate_mml_command(cmd_json: dict) -> str:
     body_hex = body_bytes.hex()
     body_len = len(body_bytes)  # size in bytes
 
-    # ---------------------------
-    # Step 2: Calculate Data Size
-    # ---------------------------
     data_size = (body_len*2 + 40) // 2   # integer division
     data_size_hex = f"{data_size:04x}"  # 2-byte big-endian
 
-    # ---------------------------
-    # Step 3: Build Header
-    # ---------------------------
     header_hex = (
         "f634"           # Start Tag
         + data_size_hex  # Data Size (big-endian)
@@ -747,8 +733,55 @@ def generate_mml_command(cmd_json: dict) -> str:
         + "0000"         # Extended Length
     )
 
-    # ---------------------------
-    # Step 4: Final Hex Message
-    # ---------------------------
     final_hex = header_hex + body_hex
     return final_hex
+
+
+def update_remote_alg_config(ip_address, username, password, updates: dict, port=22, remote_path=config['ALG']['CONFIG_PATH']):
+    ssh_client = None
+    try:
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client.connect(ip_address, port=port, username=username, password=password)
+        
+        tmp_remote = "/tmp/alg-config.json"
+        _, stdout, stderr = ssh_client.exec_command(f"sudo cp {remote_path} {tmp_remote} && sudo chmod 666 {tmp_remote}")
+        exit_status = stdout.channel.recv_exit_status()
+        if exit_status != 0:
+            raise RuntimeError(stderr.read().decode())
+        
+        sftp = ssh_client.open_sftp()
+
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            local_path = tmp_file.name
+        sftp.get(tmp_remote, local_path)
+
+        with open(local_path, "r") as f:
+            config = json.load(f)
+
+        for key, value in updates.items():
+            if key in config:
+                config[key] = value
+            else:
+                # add new keys if not present
+                config[key] = value
+
+        with open(local_path, "w") as f:
+            json.dump(config, f, indent=2)
+
+        sftp.put(local_path, tmp_remote)
+        
+        _, stdout, stderr = ssh_client.exec_command(f"sudo mv {tmp_remote} {remote_path}")
+        exit_status = stdout.channel.recv_exit_status()
+        if exit_status != 0:
+            raise RuntimeError(stderr.read().decode())
+
+        logger.info(f"✅ Updated {remote_path} on {ip_address}")
+
+        sftp.close()
+        ssh_client.close()
+
+    except Exception as e:
+        if ssh_client:
+            ssh_client.close()
+        raise RuntimeError(f"Failed to update {remote_path} on {ip_address}: {e}")

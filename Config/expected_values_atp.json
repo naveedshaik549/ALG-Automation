@@ -186,7 +186,7 @@
         "default_verdict": "ACCEPT",
         "default_verdict_on_err": "REJECT"
     },
-    "DTAL_4_2_5_IPv4": {
+    "ATP_4_2_5_IPv4": {
         "mml_rules_list": [
             {
                 "name": "assert_header_reserved_5",
@@ -198,7 +198,7 @@
         "default_verdict": "ACCEPT",
         "default_verdict_on_err": "REJECT"
     },
-    "DTAL_4_2_5_IPv6": {
+    "ATP_4_2_5_IPv6": {
         "mml_rules_list": [
             {
                 "name": "01_shake",
@@ -215,7 +215,7 @@
         "default_verdict": "ACCEPT",
         "default_verdict_on_err": "REJECT"
     },
-    "DTAL_4_2_6_IPv4": {
+    "ATP_4_2_6_IPv4": {
         "mml_rules_list": [],
         "bin_rules_list": [
             {
@@ -227,7 +227,7 @@
         "default_verdict": "ACCEPT",
         "default_verdict_on_err": "REJECT"
     },
-    "DTAL_4_2_6_IPv6": {
+    "ATP_4_2_6_IPv6": {
         "mml_rules_list": [],
         "bin_rules_list": [
             {
@@ -239,7 +239,7 @@
         "default_verdict": "ACCEPT",
         "default_verdict_on_err": "REJECT"
     },
-    "DTAL_4_2_7_IPv4": {
+    "ATP_4_2_7_IPv4": {
         "mml_rules_list": [
             {
                 "name": "assert_header_reserved_5",
@@ -257,7 +257,7 @@
         "default_verdict": "ACCEPT",
         "default_verdict_on_err": "REJECT"
     },
-    "DTAL_4_2_7_IPv6": {
+    "ATP_4_2_7_IPv6": {
         "mml_rules_list": [
             {
                 "name": "01_shake",

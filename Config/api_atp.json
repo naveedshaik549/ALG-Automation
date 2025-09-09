@@ -211,7 +211,7 @@
         },
         "data": null
     },
-    "DTAL_4_2_5_IPv4": {
+    "ATP_4_2_5_IPv4": {
         "method": "POST",
         "api_path": "/filter-rules",
         "headers": {
@@ -231,7 +231,7 @@
             }
         }
     },
-    "DTAL_4_2_5_IPv6": {
+    "ATP_4_2_5_IPv6": {
         "method": "POST",
         "api_path": "/filter-rules",
         "headers": {
@@ -257,7 +257,7 @@
             }
         }
     },
-    "DTAL_4_2_6_IPv4": {
+    "ATP_4_2_6_IPv4": {
         "method": "POST",
         "api_path": "/filter-rules",
         "headers": {
@@ -277,7 +277,7 @@
             }
         }
     },
-    "DTAL_4_2_6_IPv6": {
+    "ATP_4_2_6_IPv6": {
         "method": "POST",
         "api_path": "/filter-rules",
         "headers": {
@@ -297,7 +297,7 @@
             }
         }
     },
-    "DTAL_4_2_7_IPv4": {
+    "ATP_4_2_7_IPv4": {
         "method": "POST",
         "api_path": "/filter-rules",
         "headers": {
@@ -324,7 +324,7 @@
             }
         }
     },
-    "DTAL_4_2_7_IPv6": {
+    "ATP_4_2_7_IPv6": {
         "method": "POST",
         "api_path": "/filter-rules",
         "headers": {
@@ -357,7 +357,7 @@
             }
         }
     },
-    "DTAL_4_2_8_A": {
+    "ATP_4_2_8_A": {
         "method": "POST",
         "api_path": "/filter-rules",
         "headers": {
@@ -384,7 +384,7 @@
             }
         }
     },
-    "DTAL_4_2_8_B": {
+    "ATP_4_2_8_B": {
         "method": "POST",
         "api_path": "/filter-rules",
         "headers": {
@@ -410,7 +410,7 @@
             }
         }
     },
-    "DTAL_4_2_8_C": {
+    "ATP_4_2_8_C": {
         "method": "POST",
         "api_path": "/filter-rules",
         "headers": {
@@ -437,7 +437,7 @@
             }
         }
     },
-    "DTAL_4_2_9": {
+    "ATP_4_2_9": {
         "method": "POST",
         "api_path": "/filter-rules",
         "headers": {

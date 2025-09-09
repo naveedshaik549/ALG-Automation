@@ -1,13 +1,15 @@
 import os
+import time
+import json
 from utils import utility
 import configparser
+from datetime import datetime
+
 config_dir = os.path.join(os.path.dirname(__file__), "Config")
 config = configparser.ConfigParser()
 config_path = os.path.join(config_dir, 'config.ini')
 config.read(os.path.abspath(config_path))
 expected_values_path = os.path.join(config_dir, "expected_values.json")
-import json
-import time
 from utils.html_report_generator import log_step
 
 logger = utility.logger
@@ -25,7 +27,7 @@ class TestSuite:
     ## PreCondition for the Test suit to run
     def PreCondition_Config(self):
         testcase_id = "PreCondition_Config"
-        start = time.time()
+        start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         with log_step("Generate Preconfig files for NE and NEM"):
             utility.generate_config_files()
@@ -45,10 +47,10 @@ class TestSuite:
             # Checking current Filter-Rule setting after update
             utility.get_filter_rules_and_validate(api_key="get_filter_rules", expected_values_key="precondition_rule")
 
-        end = time.time()
-        timeTaken = end - start
+        end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         with log_step("Collecting ALG logs"):
-            utility.get_ALG_logs(testcase_id, timeTaken)
+            utility.get_ALG_logs(testcase_id, start, end)
         
         with log_step("Validating ALG logs"):
             logger.info(f"Validating ALG logs")
@@ -62,7 +64,7 @@ class TestSuite:
     ## Test case ID - DTAL_291
     def DTAL_291(self, run_time=10):
         testcase_id = "DTAL-291"
-        start = time.time()
+        start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         simulator_changes = {"message.message_ratio": "100:0:0"}
 
@@ -114,10 +116,10 @@ class TestSuite:
                 assert False, "Failed to collect final metrics"
             logger.debug(f"Final metrics collected: {final_metrics}")
 
-        end = time.time()
-        timeTaken = end - start
+        end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         with log_step("Collecting ALG logs"):
-            utility.get_ALG_logs(testcase_id, timeTaken)
+            utility.get_ALG_logs(testcase_id, start, end)
 
         #simulator_val1 = int(run_time) - 2
         with log_step("Validating Metrics"):
@@ -151,7 +153,7 @@ class TestSuite:
     ## Test case ID - DTAL_292
     def DTAL_292(self, run_time=10):
         testcase_id = "DTAL-292"
-        start = time.time()
+        start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         simulator_changes = {"message.message_ratio": "100:0:0"}
 
@@ -188,10 +190,10 @@ class TestSuite:
             # Ensure NE simulator has time to stop
             time.sleep(1)
 
-        end = time.time()
-        timeTaken = end - start
+        end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         with log_step("Collecting ALG logs"):
-            utility.get_ALG_logs(testcase_id, timeTaken)
+            utility.get_ALG_logs(testcase_id, start, end)
 
         #simulator_val1 = int(run_time) - 2
         with log_step("Validating NE logs"):
@@ -217,7 +219,7 @@ class TestSuite:
 
     def DTAL_302(self, run_time=10):
         testcase_id = "DTAL-302"
-        start = time.time()
+        start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         simulator_changes = {"message.message_ratio": "0:0:100"}
 
@@ -269,10 +271,10 @@ class TestSuite:
                 assert False, "Failed to collect final metrics"
             logger.debug(f"Final metrics collected: {final_metrics}")
 
-        end = time.time()
-        timeTaken = end - start
+        end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         with log_step("Collecting ALG logs"):
-            utility.get_ALG_logs(testcase_id, timeTaken)
+            utility.get_ALG_logs(testcase_id, start, end)
 
         #simulator_val1 = int(run_time) - 2
         with log_step("Validating Metrics"):
@@ -306,7 +308,7 @@ class TestSuite:
     ## Test case ID - DTAL_303
     def DTAL_303(self, run_time=10):
         testcase_id = "DTAL-303"
-        start = time.time()
+        start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         simulator_changes = {"message.message_ratio": "0:0:100"}
 
@@ -343,10 +345,10 @@ class TestSuite:
             # Ensure NE simulator has time to stop
             time.sleep(1)
 
-        end = time.time()
-        timeTaken = end - start
+        end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         with log_step("Collecting ALG logs"):
-            utility.get_ALG_logs(testcase_id, timeTaken)
+            utility.get_ALG_logs(testcase_id, start, end)
 
         #simulator_val1 = int(run_time) - 2
         with log_step("Validating NE logs"):
@@ -376,7 +378,7 @@ class TestSuite:
     ## Test case ID - DTAL_310
     def DTAL_310(self, run_time=10):
         testcase_id = "DTAL-310"
-        start = time.time()
+        start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         simulator_changes = {"message.message_ratio": "0:0:100"}
 
@@ -413,10 +415,10 @@ class TestSuite:
             # Ensure NE simulator has time to stop
             time.sleep(1)
 
-        end = time.time()
-        timeTaken = end - start
+        end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         with log_step("Collecting ALG logs"):
-            utility.get_ALG_logs(testcase_id, timeTaken)
+            utility.get_ALG_logs(testcase_id, start, end)
 
         #simulator_val1 = int(run_time) - 2
         with log_step("Validating NE logs"):
@@ -462,7 +464,7 @@ class TestSuite:
     ## Test case ID - DTAL_314
     def DTAL_314(self, ne_config_file=None, nem_config_file=None, run_time=10):
         testcase_id = "DTAL-314"
-        start = time.time()
+        start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         simulator_changes = {"message.message_ratio": "0:0:100"}
 
@@ -499,10 +501,10 @@ class TestSuite:
             # Ensure NE simulator has time to stop
             time.sleep(1)
 
-        end = time.time()
-        timeTaken = end - start
+        end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         with log_step("Collecting ALG logs"):
-            utility.get_ALG_logs(testcase_id, timeTaken)
+            utility.get_ALG_logs(testcase_id, start, end)
 
         with log_step("Validating NE logs"):
             logger.info(f"Validating NE simulator logs")
@@ -549,7 +551,7 @@ class TestSuite:
     ## Test case ID - DTAL_298
     def DTAL_298(self, ne_config_file=None, nem_config_file=None, run_time=10):
         testcase_id = "DTAL-298"
-        start = time.time()
+        start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         simulator_changes = {"message.message_ratio": "0:0:100"}
         
@@ -610,10 +612,10 @@ class TestSuite:
             # Checking current Filter-Rule setting after revert
             utility.get_filter_rules_and_validate(api_key="get_filter_rules", expected_values_key="precondition_rule")
 
-        end = time.time()
-        timeTaken = end - start
+        end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         with log_step("Collecting ALG logs"):
-            utility.get_ALG_logs(testcase_id, timeTaken)
+            utility.get_ALG_logs(testcase_id, start, end)
 
         #simulator_val1 = int(run_time) - 2
         with log_step("Validating NE logs"):
@@ -645,7 +647,7 @@ class TestSuite:
     ## Test case ID - DTAL_299
     def DTAL_299(self, ne_config_file=None, nem_config_file=None, run_time=10):
         testcase_id = "DTAL-299"
-        start = time.time()
+        start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         simulator_changes = {"message.message_ratio": "0:0:100"}
         
@@ -706,11 +708,10 @@ class TestSuite:
             # Checking current Filter-Rule setting after revert
             utility.get_filter_rules_and_validate(api_key="get_filter_rules", expected_values_key="precondition_rule")
 
-        end = time.time()
-        timeTaken = end - start
+        end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         with log_step("Collecting ALG logs"):
-            utility.get_ALG_logs(testcase_id, timeTaken)
+            utility.get_ALG_logs(testcase_id, start, end)
 
         #simulator_val1 = int(run_time) - 2
         with log_step("Validating NE logs"):
@@ -742,7 +743,7 @@ class TestSuite:
     ## Test case ID - DTAL_318
     def DTAL_318(self):
         testcase_id = "DTAL-318"
-        start = time.time()
+        start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # Retrieving current Metrics
         with log_step("Retrieving Metrics"):
@@ -761,11 +762,10 @@ class TestSuite:
             logger.info(f"Generated Metrics Table")
             logger.debug(f"[Metrics Table]\n" + metrics_table)
 
-        end = time.time()
-        timeTaken = end - start
+        end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         with log_step("Collecting ALG logs"):
-            utility.get_ALG_logs(testcase_id, timeTaken)                               
+            utility.get_ALG_logs(testcase_id, start, end)                               
             
             
     ## Test case ID - DTAL_17
